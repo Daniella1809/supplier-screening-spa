@@ -8,7 +8,10 @@ import type {
   SupplierInput,
 } from './types';
 
-const baseURL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5080';
+
+const baseURL = import.meta.env.PROD
+  ? window.location.origin
+  : (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5080');
 
 export const api = axios.create({
   baseURL,
