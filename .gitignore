@@ -1,0 +1,33 @@
+# ---- .NET / Backend ----
+bin/
+obj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+.vs/
+publish/
+*.dll
+*.pdb
+appsettings.*.local.json
+
+# ---- Node / Frontend ----
+node_modules/
+dist/
+dist-ssr/
+*.local
+.vite/
+coverage/
+*.tsbuildinfo
+
+# ---- Env / Secrets ----
+.env
+.env.*
+!.env.example
+*.pfx
+
+# ---- Editor / OS ----
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
