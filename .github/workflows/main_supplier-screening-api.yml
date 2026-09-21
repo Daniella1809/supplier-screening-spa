@@ -1,8 +1,5 @@
 
-# Docs for the Azure Web Apps Deploy action:
-# https://github.com/Azure/webapps-deploy
-
-name: Build and deploy ASP.Net Core app to Azure Web App - supplier-screening-api
+name: Build and deploy Supplier Screening SPA to Azure
 
 on:
   push:
@@ -18,24 +15,72 @@ jobs:
       contents: read
 
     steps:
-      - uses: actions/checkout@v4
 
+      # Descargar el repositorio
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Configurar Node.js para React
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      # Instalar y compilar React
+      - name: Build React frontend
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run build
+
+      # Configurar .NET 8
       - name: Set up .NET Core
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.x'
 
-      - name: Build with dotnet
-        run: dotnet build backend/SupplierScreening.Api/SupplierScreening.Api.csproj --configuration Release
+      # Compilar y publicar el backend
+      - name: Publish ASP.NET Core backend
+        run: dotnet publish backend/SupplierScreening.Api/SupplierScreening.Api.csproj --configuration Release --output ./published
 
-      - name: dotnet publish
-        run: dotnet publish backend/SupplierScreening.Api/SupplierScreening.Api.csproj -c Release -o "${{env.DOTNET_ROOT}}/myapp"
+      # Integrar React dentro del backend
+      - name: Copy React frontend into ASP.NET Core
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path "./published/wwwroot" | Out-Null
 
+          Copy-Item -Path "./frontend/dist/*" -Destination "./published/wwwroot/" -Recurse -Force
+
+          if (-not (Test-Path "./published/wwwroot/index.html")) {
+            throw "React index.html was not found in the publish folder."
+          }
+
+      # Verificar el paquete final
+      - name: Verify deployment package
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "./published/SupplierScreening.Api.dll")) {
+            throw "ASP.NET Core DLL not found."
+          }
+
+          if (-not (Test-Path "./published/web.config")) {
+            throw "ASP.NET Core web.config not found."
+          }
+
+          if (-not (Test-Path "./published/wwwroot/index.html")) {
+            throw "React index.html not found."
+          }
+
+          Write-Host "Frontend and backend package verified."
+
+      # Guardar el paquete para el despliegue
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
         with:
           name: .net-app
-          path: ${{env.DOTNET_ROOT}}/myapp
+          path: ./published/
 
   deploy:
     runs-on: windows-latest
@@ -46,11 +91,15 @@ jobs:
       contents: read
 
     steps:
+
+      # Descargar el paquete compilado
       - name: Download artifact from build job
         uses: actions/download-artifact@v4
         with:
           name: .net-app
+          path: ./published
 
+      # Autenticarse en Azure
       - name: Login to Azure
         uses: azure/login@v2
         with:
@@ -58,10 +107,11 @@ jobs:
           tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_70541A16CEBC4BC9AD2B13659AECC75A }}
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_2427C8966E1D484693845498CDB5E942 }}
 
+      # Publicar frontend y backend en Azure
       - name: Deploy to Azure Web App
         id: deploy-to-webapp
         uses: azure/webapps-deploy@v3
         with:
           app-name: 'supplier-screening-api'
           slot-name: 'Production'
-          package: .
+          package: ./published
