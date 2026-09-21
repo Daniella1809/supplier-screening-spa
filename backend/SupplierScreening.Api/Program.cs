@@ -51,6 +51,7 @@ builder.Services.Configure<ApiBehaviorOptions>(options =>
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
@@ -59,10 +60,25 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+// Permitir que ASP.NET Core muestre el frontend React
+app.UseDefaultFiles();
+app.UseStaticFiles();
+
+// Mantener la configuración CORS existente
 app.UseCors(CorsPolicy);
 
+// Mantener los endpoints del backend
 app.MapControllers();
 
-app.MapGet("/health", () => Results.Ok(new { status = "ok", service = "SupplierScreening.Api" }));
+app.MapGet("/health", () =>
+    Results.Ok(new
+    {
+        status = "ok",
+        service = "SupplierScreening.Api"
+    })
+);
+
+// Permitir que React gestione sus rutas
+app.MapFallbackToFile("index.html");
 
 app.Run();
